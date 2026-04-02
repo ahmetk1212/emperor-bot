@@ -13,7 +13,7 @@ export class DraftWriterPlugin implements AgentPlugin {
       summary: `Draft created for topic: ${topic}`,
       details: {
         generatedAt: context.now.toISOString(),
-        outline: [`${topic} giriş`, `${topic} ana fikirler`, `${topic} sonuç`],
+        outline: [`${topic} introduction`, `${topic} main ideas`, `${topic} conclusion`],
       },
     };
   }
