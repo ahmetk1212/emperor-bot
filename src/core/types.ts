@@ -49,7 +49,7 @@ export interface ExecutionResult {
 export interface AgentPlugin {
   id: string;
   name: string;
-  requiredPermissions: PermissionLevel[];
+  requiredPermissions: readonly PermissionLevel[];
   run(task: TaskRequest, context: ExecutionContext): Promise<ExecutionResult>;
 }
 
