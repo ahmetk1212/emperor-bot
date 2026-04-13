@@ -6157,21 +6157,23 @@ def create_optimizer(
         Optimizer instance
     """
     # Separate parameters for weight decay
-    # LayerNorm, Bias ve embedding'ler decay edilmez
+    # LayerNorm, bias ve embedding parametreleri decay edilmez
     decay_params = []
     no_decay_params = []
     
     for name, param in model.named_parameters():
         if not param.requires_grad:
             continue
-            
-        # No decay for these parameters
-        if "bias" in name or "LayerNorm" in name or "layernorm" in 
-name.lower():
-            no_decay_params.append(param)
-        elif "norm" in name.lower():
-            no_decay_params.append(param)
-        elif "embedding" in name.lower():
+        
+        name_lower = name.lower()
+        is_no_decay = (
+            "bias" in name_lower
+            or "layernorm" in name_lower
+            or "norm" in name_lower
+            or "embedding" in name_lower
+        )
+        
+        if is_no_decay:
             no_decay_params.append(param)
         else:
             decay_params.append(param)
@@ -6182,7 +6184,9 @@ name.lower():
         {"params": no_decay_params, "weight_decay": 0.0}
     ]
     
-    if optimizer_name.lower() == "adamw":
+    optimizer_name = optimizer_name.lower()
+    
+    if optimizer_name == "adamw":
         optimizer = torch.optim.AdamW(
             optimizer_groups,
             lr=learning_rate,
@@ -6190,7 +6194,7 @@ name.lower():
             eps=eps
         )
         
-    elif optimizer_name.lower() == "adam":
+    elif optimizer_name == "adam":
         optimizer = torch.optim.Adam(
             optimizer_groups,
             lr=learning_rate,
@@ -6198,7 +6202,7 @@ name.lower():
             eps=eps
         )
         
-    elif optimizer_name.lower() == "sgd":
+    elif optimizer_name == "sgd":
         optimizer = torch.optim.SGD(
             optimizer_groups,
             lr=learning_rate,
@@ -6206,7 +6210,7 @@ name.lower():
             weight_decay=0.0  # Already in groups
         )
         
-    elif optimizer_name.lower() == "sophia":
+    elif optimizer_name == "sophia":
         optimizer = SophiaOptimizer(
             optimizer_groups,
             lr=learning_rate,
@@ -6215,7 +6219,7 @@ name.lower():
             eps=eps
         )
         
-    elif optimizer_name.lower() == "lion":
+    elif optimizer_name == "lion":
         optimizer = LionOptimizer(
             optimizer_groups,
             lr=learning_rate,
