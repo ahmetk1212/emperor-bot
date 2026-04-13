@@ -1841,7 +1841,8 @@ def flash_attention(
     mask: Optional[torch.Tensor] = None,
     dropout_p: float = 0.0,
     softmax_scale: Optional[float] = None,
-    causal: bool = True
+    causal: bool = True,
+    training: bool = True
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     """
     Flash Attention computation.
@@ -1851,9 +1852,10 @@ def flash_attention(
         k: Key, shape: (batch, heads, seq_len, head_dim)
         v: Value, shape: (batch, heads, seq_len, head_dim)
         mask: Optional mask, shape: (seq_len, seq_len) or broadcastable
-        dropout_p: Dropout probability (training'de)
+        dropout_p: Dropout probability (during training)
         softmax_scale: Scale factor (default: 1/√head_dim)
         causal: Causal masking (predict future tokens)
+        training: Apply dropout only during training
         
     Returns:
         output: (batch, heads, seq_len, head_dim)
@@ -1892,7 +1894,7 @@ def flash_attention(
     
     # Manual implementation (reference)
     return _manual_attention(
-        q, k, v, mask, dropout_p, softmax_scale, causal
+        q, k, v, mask, dropout_p, softmax_scale, causal, training
     )
 
 
@@ -1903,7 +1905,8 @@ def _manual_attention(
     mask: Optional[torch.Tensor],
     dropout_p: float,
     softmax_scale: float,
-    causal: bool
+    causal: bool,
+    training: bool
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     """
     Manual attention implementation (no flash_attn).
@@ -1936,7 +1939,7 @@ def _manual_attention(
     attn_weights = F.softmax(attn, dim=-1)
     
     # Dropout
-    if dropout_p > 0 and self.training:
+    if dropout_p > 0 and training:
         attn_weights = F.dropout(attn_weights, p=dropout_p)
     
     # Apply to values
@@ -2063,7 +2066,8 @@ class FlashAttentionBlock(nn.Module):
             mask=attention_mask,
             dropout_p=self.dropout if self.training else 0.0,
             softmax_scale=self.scale,
-            causal=is_causal
+            causal=is_causal,
+            training=self.training
         )
         
         # Reshape back
@@ -2169,10 +2173,14 @@ self.head_dim).transpose(1, 2)
         v = v.view(batch_size, seq_len, self.num_kv_heads, 
 self.head_dim).transpose(1, 2)
         
-        # Repeat K, V for each Q group
+        # Expand K, V for each Q group (view-based, avoids explicit copies)
         # (batch, num_kv, seq, dim) → (batch, num_heads, seq, dim)
-        k = k.repeat_interleave(self.num_q_per_kv, dim=1)
-        v = v.repeat_interleave(self.num_q_per_kv, dim=1)
+        k = k.unsqueeze(2).expand(
+            batch_size, self.num_kv_heads, self.num_q_per_kv, seq_len, self.head_dim
+        ).reshape(batch_size, self.num_heads, seq_len, self.head_dim)
+        v = v.unsqueeze(2).expand(
+            batch_size, self.num_kv_heads, self.num_q_per_kv, seq_len, self.head_dim
+        ).reshape(batch_size, self.num_heads, seq_len, self.head_dim)
         
         # Attention
         attn_output, _ = flash_attention(
@@ -2180,7 +2188,8 @@ self.head_dim).transpose(1, 2)
             mask=attention_mask,
             dropout_p=self.dropout if self.training else 0.0,
             softmax_scale=self.scale,
-            causal=is_causal
+            causal=is_causal,
+            training=self.training
         )
         
         # Reshape and project
@@ -2271,7 +2280,8 @@ class MultiHeadLatentAttention(nn.Module):
             mask=attention_mask,
             dropout_p=self.dropout.p if self.training else 0.0,
             softmax_scale=self.scale,
-            causal=is_causal
+            causal=is_causal,
+            training=self.training
         )
         
         # Output
@@ -4608,6 +4618,7 @@ from typing import List, Dict, Optional, Iterator, Callable, Any
 from pathlib import Path
 import json
 from dataclasses import dataclass
+from nightshade.data.tokenizer import TokenizerWrapper
 
 
 @dataclass
@@ -4637,7 +4648,7 @@ filtrelenir)
     def __init__(
         self,
         texts: List[str],
-        tokenizer: Any,
+        tokenizer: TokenizerWrapper,
         max_length: int = 2048,
         min_length: int = 16,
         labels: Optional[List[int]] = None
@@ -4707,7 +4718,7 @@ class StreamingTextDataset(IterableDataset):
     def __init__(
         self,
         file_path: str,
-        tokenizer: Any,
+        tokenizer: TokenizerWrapper,
         max_length: int = 2048,
         min_length: int = 16,
         buffer_size: int = 10000
@@ -4804,7 +4815,7 @@ birleştirir.
     def __init__(
         self,
         texts: List[str],
-        tokenizer: Any,
+        tokenizer: TokenizerWrapper,
         max_length: int = 2048,
         eos_token_id: int = 2,
         shuffle_documents: bool = False,
@@ -4906,7 +4917,7 @@ class CachedDataset(Dataset):
     def __init__(
         self,
         raw_texts: List[str],
-        tokenizer: Any,
+        tokenizer: TokenizerWrapper,
         max_length: int = 2048,
         cache_dir: Optional[str] = None
     ):
@@ -4981,7 +4992,7 @@ class LazyLoadedDataset(Dataset):
     def __init__(
         self,
         file_paths: List[str],
-        tokenizer: Any,
+        tokenizer: TokenizerWrapper,
         max_length: int = 2048
     ):
         self.file_paths = [Path(p) for p in file_paths]
@@ -5156,6 +5167,7 @@ import torch
 from torch.nn.utils.rnn import pad_sequence
 from typing import List, Dict, Any, Optional, Callable
 import random
+from nightshade.data.tokenizer import TokenizerWrapper
 
 
 class DataCollator:
@@ -5168,11 +5180,10 @@ class DataCollator:
     
     def __init__(
         self,
-        tokenizer: Any,
+        tokenizer: TokenizerWrapper,
         max_length: int = 2048,
-        padding: str = "max_length",  # "max_length" veya "longest"
-        label_pad_token_id: int = -100  # Loss hesabında ignore 
-edilir
+        padding: str = "max_length",  # "max_length" or "longest"
+        label_pad_token_id: int = -100  # Ignored in loss calculation
     ):
         self.tokenizer = tokenizer
         self.max_length = max_length
@@ -5210,7 +5221,7 @@ class PreTrainingCollator(DataCollator):
     
     def __init__(
         self,
-        tokenizer: Any,
+        tokenizer: TokenizerWrapper,
         max_length: int = 2048,
         padding: str = "longest",
         label_pad_token_id: int = -100,
@@ -5297,7 +5308,7 @@ class DynamicBatchCollator(DataCollator):
     
     def __init__(
         self,
-        tokenizer: Any,
+        tokenizer: TokenizerWrapper,
         max_length: int = 2048,
         batch_size: int = 8,
         length_bucket_fn: Optional[Callable[[int], int]] = None
@@ -5384,7 +5395,7 @@ class DataCollatorWithMultiplePositionalEncodings(DataCollator):
     
     def __init__(
         self,
-        tokenizer: Any,
+        tokenizer: TokenizerWrapper,
         max_length: int = 2048,
         add_position_ids: bool = True
     ):
@@ -5425,7 +5436,7 @@ class GenerationCollator(DataCollator):
     
     def __init__(
         self,
-        tokenizer: Any,
+        tokenizer: TokenizerWrapper,
         max_length: int = 2048,
         add_generation_prompt: bool = False
     ):
@@ -5483,7 +5494,7 @@ class MixedSequenceCollator(DataCollator):
     
     def __init__(
         self,
-        tokenizer: Any,
+        tokenizer: TokenizerWrapper,
         batch_size: int = 8,
         max_length: int = 2048,
         shuffle: bool = True,
@@ -5582,12 +5593,13 @@ from typing import List, Dict, Optional, Any, Callable
 from pathlib import Path
 import random
 from tqdm import tqdm
+from nightshade.data.tokenizer import TokenizerWrapper
 
 
 def create_dataloaders(
     train_dataset,
     val_dataset,
-    tokenizer: Any,
+    tokenizer: TokenizerWrapper,
     batch_size: int = 8,
     max_length: int = 2048,
     num_workers: int = 4,
@@ -5782,7 +5794,7 @@ def create_sample_dataset(
 
 def analyze_dataset(
     texts: List[str],
-    tokenizer: Any,
+    tokenizer: TokenizerWrapper,
     max_length: int = 2048
 ) -> Dict[str, Any]:
     """
@@ -6157,21 +6169,22 @@ def create_optimizer(
         Optimizer instance
     """
     # Separate parameters for weight decay
-    # LayerNorm, Bias ve embedding'ler decay edilmez
+    # LayerNorm, bias, and embedding parameters are not decayed
     decay_params = []
     no_decay_params = []
     
     for name, param in model.named_parameters():
         if not param.requires_grad:
             continue
-            
-        # No decay for these parameters
-        if "bias" in name or "LayerNorm" in name or "layernorm" in 
-name.lower():
-            no_decay_params.append(param)
-        elif "norm" in name.lower():
-            no_decay_params.append(param)
-        elif "embedding" in name.lower():
+        
+        name_lower = name.lower()
+        is_no_decay = (
+            "bias" in name_lower
+            or "norm" in name_lower
+            or "embedding" in name_lower
+        )
+        
+        if is_no_decay:
             no_decay_params.append(param)
         else:
             decay_params.append(param)
@@ -6182,7 +6195,9 @@ name.lower():
         {"params": no_decay_params, "weight_decay": 0.0}
     ]
     
-    if optimizer_name.lower() == "adamw":
+    optimizer_name = optimizer_name.lower()
+    
+    if optimizer_name == "adamw":
         optimizer = torch.optim.AdamW(
             optimizer_groups,
             lr=learning_rate,
@@ -6190,7 +6205,7 @@ name.lower():
             eps=eps
         )
         
-    elif optimizer_name.lower() == "adam":
+    elif optimizer_name == "adam":
         optimizer = torch.optim.Adam(
             optimizer_groups,
             lr=learning_rate,
@@ -6198,7 +6213,7 @@ name.lower():
             eps=eps
         )
         
-    elif optimizer_name.lower() == "sgd":
+    elif optimizer_name == "sgd":
         optimizer = torch.optim.SGD(
             optimizer_groups,
             lr=learning_rate,
@@ -6206,7 +6221,7 @@ name.lower():
             weight_decay=0.0  # Already in groups
         )
         
-    elif optimizer_name.lower() == "sophia":
+    elif optimizer_name == "sophia":
         optimizer = SophiaOptimizer(
             optimizer_groups,
             lr=learning_rate,
@@ -6215,7 +6230,7 @@ name.lower():
             eps=eps
         )
         
-    elif optimizer_name.lower() == "lion":
+    elif optimizer_name == "lion":
         optimizer = LionOptimizer(
             optimizer_groups,
             lr=learning_rate,
