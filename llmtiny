@@ -1,3 +1,23 @@
+# NightShade LLM - Eğitim Başlangıç Sürümü
+
+Bu dosya, modeli eğitime hazır hale getirmek için düzenlenmiştir.
+Hedef: sistemi temiz, sürdürülebilir ve yüksek performanslı bir yapı ile
+koruyup geliştirmek.
+
+## Strateji (Korunan En İyi Teknolojiler)
+- Hibrit mimari: **Mamba + Gated Attention + Flash Attention**
+- Verimli eğitim: **gradient checkpointing + mixed precision (bfloat16)**
+- Uzun bağlam: **RoPE tabanlı konumlama**
+- Güvenli yapılandırma: **dataclass tabanlı merkezi config**
+
+## Eklenen Yeni Teknoloji Önerisi
+**Adaptive Memory Routing (AMR):**
+Uzun dizilerde sabit dikkat maliyetini azaltmak için, katmanlar arası
+hafıza özetlerini dinamik yönlendiren bir bellek rotalama yaklaşımı.
+Bu sayede eğitimde hız/kalite dengesi korunurken daha uzun bağlamlarda
+kararlılık artırılır.
+
+---
 
 ```python
 """
