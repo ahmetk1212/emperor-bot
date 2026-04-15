@@ -25,9 +25,9 @@ def parse_args():
 
 def _sample_texts() -> list[str]:
     return [
-        "merhaba dunya bu bir tiny egitim ornegidir",
-        "model once tiny seviyede dogrulanmalidir",
-        "kisa smoke egitimi boru hattini kanitlar",
+        "hello world this is a tiny training sample",
+        "the pipeline should be validated at tiny scale first",
+        "short smoke training proves the end to end flow",
     ] * 200
 
 

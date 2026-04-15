@@ -1,6 +1,6 @@
 # emperor-bot / NightShade Tiny
 
-Bu repo artık `llmtiny` taslağını çalışan çok dosyalı bir Python proje yapısına böler:
+This repository now splits the `llmtiny` draft into a runnable multi-file Python project:
 
 - `nightshade/core`
 - `nightshade/model`
@@ -11,11 +11,11 @@ Bu repo artık `llmtiny` taslağını çalışan çok dosyalı bir Python proje 
 - `configs`
 - `tests`
 
-## Hızlı kullanım
+## Quick start
 
 ```bash
 python scripts/train.py --config configs/tiny.yaml --max_steps 10
-python scripts/generate.py --config configs/tiny.yaml --model outputs/tiny/checkpoints/best_model.pt --tokenizer outputs/tiny/tokenizer/tokenizer.json --prompt "merhaba"
+python scripts/generate.py --config configs/tiny.yaml --model outputs/tiny/checkpoints/best_model.pt --tokenizer outputs/tiny/tokenizer/tokenizer.json --prompt "hello"
 ```
 
 ## Test

@@ -17,7 +17,7 @@ def main():
     p.add_argument("--model", required=True)
     p.add_argument("--config", required=True)
     p.add_argument("--tokenizer", required=True)
-    p.add_argument("--prompt", default="merhaba")
+    p.add_argument("--prompt", default="hello")
     p.add_argument("--max_tokens", type=int, default=32)
     args = p.parse_args()
 

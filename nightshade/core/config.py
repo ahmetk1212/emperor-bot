@@ -29,7 +29,9 @@ class ModelConfig:
 
     def __post_init__(self) -> None:
         if self.hidden_size % self.head_dim != 0:
-            raise ValueError("hidden_size head_dim ile bölünebilir olmalı")
+            raise ValueError(
+                f"hidden_size ({self.hidden_size}) must be divisible by head_dim ({self.head_dim})"
+            )
         self.num_heads = self.hidden_size // self.head_dim
         if len(self.layer_types) != self.num_layers:
             self.layer_types = ["mamba"] * max(1, self.num_layers // 3) + ["gated_attn"] * max(1, self.num_layers // 6)
@@ -105,14 +107,14 @@ class NightShadeConfig:
     @classmethod
     def from_yaml(cls, path: str | Path) -> "NightShadeConfig":
         if yaml is None:
-            raise RuntimeError("pyyaml gerekli")
+            raise RuntimeError("pyyaml required")
         with open(path, "r", encoding="utf-8") as f:
             data = yaml.safe_load(f) or {}
         return cls.from_dict(data)
 
     def to_yaml(self, path: str | Path) -> None:
         if yaml is None:
-            raise RuntimeError("pyyaml gerekli")
+            raise RuntimeError("pyyaml required")
         p = Path(path)
         p.parent.mkdir(parents=True, exist_ok=True)
         with open(p, "w", encoding="utf-8") as f:

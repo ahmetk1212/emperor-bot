@@ -8,7 +8,7 @@ if importlib.util.find_spec("torch") is not None:
 
 
 class ForwardTests(unittest.TestCase):
-    @unittest.skipIf(importlib.util.find_spec("torch") is None, "torch gerekli")
+    @unittest.skipIf(importlib.util.find_spec("torch") is None, "torch required")
     def test_forward(self):
         model = create_tiny_model()
         x = torch.randint(0, model.config.vocab_size, (2, 16))

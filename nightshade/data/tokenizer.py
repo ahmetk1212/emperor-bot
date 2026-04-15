@@ -53,7 +53,7 @@ class BPETokenizer:
             ids = ids[:max_length]
         if return_tensors == "pt":
             if torch is None:
-                raise RuntimeError("return_tensors='pt' için torch gerekli")
+                raise RuntimeError("torch required for return_tensors='pt'")
             return {"input_ids": torch.tensor([ids], dtype=torch.long)}
         return ids
 

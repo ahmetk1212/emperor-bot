@@ -51,6 +51,7 @@ class LMTrainer:
         self.model.train()
         step = 0
         self.optimizer.zero_grad(set_to_none=True)
+        last_loss = None
         while step < max_steps:
             for batch in self.train_loader:
                 batch = {k: (v.to(self.device) if hasattr(v, "to") else v) for k, v in batch.items()}
@@ -58,6 +59,7 @@ class LMTrainer:
                 loss = out["loss"]
                 if loss is None:
                     continue
+                last_loss = float(loss.item())
                 loss.backward()
                 torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.config.training.max_grad_norm)
                 self.optimizer.step()
@@ -70,5 +72,10 @@ class LMTrainer:
                     break
             if len(self.train_loader) == 0:
                 break
-        self.ckpt.save_checkpoint(step=step, metrics={"loss": float(loss.item()) if 'loss' in locals() else 0.0}, best=True)
-        return {"global_step": step, "loss": float(loss.item()) if 'loss' in locals() else 0.0}
+        if last_loss is None:
+            raise RuntimeError(
+                "No training batches were processed. The dataloader is empty - "
+                "check that the dataset has valid examples and dataloader settings are correct."
+            )
+        self.ckpt.save_checkpoint(step=step, metrics={"loss": last_loss}, best=True)
+        return {"global_step": step, "loss": last_loss}

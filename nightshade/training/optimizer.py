@@ -19,4 +19,4 @@ def create_optimizer(
         return torch.optim.Adam(params, lr=learning_rate, betas=(beta1, beta2), eps=eps, weight_decay=weight_decay)
     if name == "sgd":
         return torch.optim.SGD(params, lr=learning_rate, momentum=beta1, weight_decay=weight_decay)
-    raise ValueError(f"Bilinmeyen optimizer: {optimizer_name}")
+    raise ValueError(f"Unknown optimizer: {optimizer_name}")

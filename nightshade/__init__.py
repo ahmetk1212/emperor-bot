@@ -16,5 +16,5 @@ try:
         ]
     )
 except ModuleNotFoundError:
-    # torch kurulu değilse sadece config tarafı import edilebilir kalsın
+    # if torch is not installed, keep config imports available
     pass

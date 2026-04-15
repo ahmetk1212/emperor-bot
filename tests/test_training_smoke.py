@@ -14,7 +14,7 @@ if importlib.util.find_spec("torch") is not None:
 
 
 class TrainingSmokeTests(unittest.TestCase):
-    @unittest.skipIf(importlib.util.find_spec("torch") is None, "torch gerekli")
+    @unittest.skipIf(importlib.util.find_spec("torch") is None, "torch required")
     def test_mini_train_5_steps(self):
         cfg = NightShadeConfig()
         cfg.training.max_steps = 5
@@ -23,7 +23,7 @@ class TrainingSmokeTests(unittest.TestCase):
             cfg.output_dir = td
             tok = BPETokenizer(vocab_size=256)
             tok.train([])
-            texts = ["tiny egitim testi"] * 200
+            texts = ["tiny training test"] * 200
             ds = ConcatDataset(texts, tok, max_length=32, eos_token_id=tok.eos_token_id, shuffle_documents=True)
             loader = DataLoader(ds, batch_size=cfg.training.batch_size, shuffle=True, collate_fn=PreTrainingCollator(tok, max_length=32))
             model = NightShadeLM(cfg.model)

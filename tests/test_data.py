@@ -8,11 +8,11 @@ if importlib.util.find_spec("torch") is not None:
 
 
 class DataTests(unittest.TestCase):
-    @unittest.skipIf(importlib.util.find_spec("torch") is None, "torch gerekli")
+    @unittest.skipIf(importlib.util.find_spec("torch") is None, "torch required")
     def test_batch_production(self):
         tok = BPETokenizer(vocab_size=128)
         tok.train([])
-        texts = ["merhaba dunya", "tiny model test", "veri boru hatti"]
+        texts = ["hello world", "tiny model test", "data pipeline"]
         ds = TextDataset(texts, tok, max_length=16, min_length=2)
         col = PreTrainingCollator(tok, max_length=16)
         batch = col([ds[0], ds[1]])

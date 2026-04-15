@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 
 class TokenEmbedding(nn.Module):
@@ -9,7 +10,7 @@ class TokenEmbedding(nn.Module):
         nn.init.normal_(self.weight, mean=0.0, std=0.02)
 
     def forward(self, input_ids: torch.Tensor) -> torch.Tensor:
-        return torch.embedding(self.weight, input_ids)
+        return F.embedding(input_ids, self.weight)
 
 
 class CombinedEmbedding(nn.Module):
