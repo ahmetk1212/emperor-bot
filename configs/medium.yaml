@@ -1,0 +1,25 @@
+project_name: nightshade
+experiment_name: medium
+output_dir: ./outputs/medium
+model:
+  vocab_size: 50000
+  hidden_size: 640
+  num_layers: 10
+  head_dim: 64
+  intermediate_size: 2048
+  max_seq_length: 512
+  layer_types: [mamba, mamba, mamba, mamba, gated_attn, gated_attn, flash_attn, flash_attn, flash_attn, flash_attn]
+data:
+  train_path: ./data/train.txt
+  tokenizer_path: ./outputs/medium/tokenizer/tokenizer.json
+  tokenizer_vocab_size: 50000
+  tokenizer_max_length: 512
+training:
+  batch_size: 1
+  gradient_accumulation_steps: 16
+  max_steps: 50
+  save_steps: 10
+  learning_rate: 0.0002
+  optimizer: adamw
+  scheduler: warmup_cosine
+  warmup_steps: 5

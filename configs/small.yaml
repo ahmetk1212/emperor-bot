@@ -1,0 +1,26 @@
+project_name: nightshade
+experiment_name: small
+output_dir: ./outputs/small
+model:
+  vocab_size: 40000
+  hidden_size: 512
+  num_layers: 8
+  head_dim: 64
+  intermediate_size: 1360
+  max_seq_length: 512
+  layer_types: [mamba, mamba, mamba, gated_attn, gated_attn, flash_attn, flash_attn, flash_attn]
+data:
+  train_path: ./data/train.txt
+  val_path: ./data/val.txt
+  tokenizer_path: ./outputs/small/tokenizer/tokenizer.json
+  tokenizer_vocab_size: 40000
+  tokenizer_max_length: 512
+training:
+  batch_size: 2
+  gradient_accumulation_steps: 8
+  max_steps: 50
+  save_steps: 10
+  learning_rate: 0.0003
+  optimizer: adamw
+  scheduler: warmup_cosine
+  warmup_steps: 5
